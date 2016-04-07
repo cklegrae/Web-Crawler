@@ -28,19 +28,17 @@ public class Website {
 		String url = "http://" + domainName + "/robots.txt";
 		try(BufferedReader in = new BufferedReader(new InputStreamReader(new URL(url).openStream()))) {
 	        String line;
-	        // User-agent: * triggers the isGenericAgent boolean.
 	        boolean isGenericAgent = false;
 	        while((line = in.readLine()) != null) {
-	        	// We only want to look at settings applying to *, rather than taking all of the rules on the page.
 	        	if(line.startsWith("User-agent:")){
 	        		if(line.contains("*")){
 	        			isGenericAgent = true;
 	        		}
-	        		else
+	        		else{
 	        			isGenericAgent = false;
+	        		}
 	        	}
 	        	
-	        	// Ignore line if it's not referring to us.
 	        	if(isGenericAgent == false)
 	        		continue;
 	        	
@@ -49,9 +47,7 @@ public class Website {
 	            }
 	            
 	            else if(line.startsWith("Disallow: ")){
-	            	if(line.equals("Disallow :"))
-	            		disallowed.add("");
-	            	else
+	            	if(!line.equals("Disallow: "))
 	            		disallowed.add(line.substring(10));
 	            }
 	        }
@@ -75,7 +71,6 @@ public class Website {
 		url = url.substring(url.indexOf(domainNameTruncated.replaceFirst("www.", "")) + domainNameTruncated.replaceFirst("www.", "").length());
 		
 		// If the url matches a disallowed rule, return false if and only if there does not exist an allowed rule validating this url.
-		// Pattern.quote() avoids dangling meta characters.
 		for(String disallowedRule : disallowed){
 			if(url.matches(".*" + Pattern.quote(disallowedRule) + ".*")){
 				for(String allowedRule : allowed){
@@ -86,7 +81,6 @@ public class Website {
 				return false;
 			}
 		}
-		
 		return true;
 	}
 	
@@ -94,7 +88,6 @@ public class Website {
 		return !urls.isEmpty();
 	}
 	
-	// nextURL returns the oldest URL in the queue.
 	public String nextURL(){
 		if(urls.isEmpty())
 			return "";

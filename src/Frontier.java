@@ -7,10 +7,7 @@ import java.util.concurrent.TimeUnit;
 
 public class Frontier {
 
-	// Main queue represents websites that can be crawled at the moment.
 	private static LinkedBlockingQueue<Website> mainQueue = new LinkedBlockingQueue<Website>();
-	
-	// Wait queue represents websites that can not be crawled at the moment.
 	private static LinkedBlockingQueue<Website> waitQueue = new LinkedBlockingQueue<Website>();
 
 	private static String[] uniqueLinks = new String[2000];
@@ -18,8 +15,7 @@ public class Frontier {
 	private static int maxLinks = 1000;
 	private static ArrayList<String> visitedLinks = new ArrayList<String>();
 	
-	// Key: Number of documents processed. Value: Number of unique links in the frontier + already visited.
-	private static HashMap<Integer, Integer> processedVsFrontier = new HashMap<Integer, Integer>();
+	private static HashMap<Integer, Integer> visitedVsFrontier = new HashMap<Integer, Integer>();
 		
 	// Returns true if the thread is no longer needed.
 	public static boolean done(){
@@ -39,11 +35,9 @@ public class Frontier {
 		if(mainQueue.isEmpty())
 			return null;
 		
-		// Poll for an available website: if a second passes without one being ready, the null value tells the crawler thread to recheck done().
 		try {
 			Website poll = mainQueue.poll(1, TimeUnit.SECONDS);
 			if(poll != null){
-				// We're using this website now, so add it to the wait queue to avoid being impolite.
 				waitQueue.add(poll);
 			}
 			return poll;
@@ -53,11 +47,11 @@ public class Frontier {
 		return null;
 	}
 	
+	// Adds URL to the appropriate website, adds new website if none found.
 	public static void addURL(String url){
 		
 		int hash = checkDuplicates(url);
 		
-		// Duplicate detected, no need to continue.
 		if(hash == -1)
 			return;
 		
@@ -65,31 +59,28 @@ public class Frontier {
 		
 		url = cleanURL(url);
 		
-		// Check if the domain exists in the main queue.
-		for(Website w : mainQueue){
-			if(w.getDomain().equals(urlDomain)){
-				w.addURL(url);
-				uniqueLinks[hash] = url;
-				uniqueCount++;
-				return;
-			}
-		}
-		
-		// Check if the domain exists in the wait queue.
-		for(Website w : waitQueue){
-			if(w.getDomain().equals(urlDomain)){
-				w.addURL(url);
-				uniqueLinks[hash] = url;
-				uniqueCount++;
-				return;
-			}
+		Website[] main = mainQueue.toArray(new Website[mainQueue.size()]);
+		Website[] wait = waitQueue.toArray(new Website[waitQueue.size()]);
+
+		for(int i = 0; i < Math.max(main.length, wait.length); i++){
+			Website web;
+			if(main.length - 1 > i && main[i].getDomain().equals(urlDomain))
+				web = main[i];
+			else if(wait.length - 1 > i && wait[i].getDomain().equals(urlDomain))
+				web = wait[i];
+			else
+				continue;
+			
+			web.addURL(url);
+			uniqueLinks[hash] = url;
+			uniqueCount++;
+			return;
 		}
 				
-		// Else, the page must belong to a website not on any queue.
 		Website website = new Website(urlDomain);
 		website.addURL(url);
 		
-		// If we're allowed to crawl robots.txt, do so and add rules to the site.
+		// Website must allow crawling to be valid.
 		if(website.addCrawlRules()){
 			mainQueue.add(website);
 			uniqueLinks[hash] = url;
@@ -111,7 +102,6 @@ public class Frontier {
 		index %= uniqueLinks.length;
 		
 		while(uniqueLinks[index] != null){
-			// Duplicate found.
 			if(url.equals(uniqueLinks[index])){
 				return -1;
 			}
@@ -146,7 +136,6 @@ public class Frontier {
 	}
 	
 	private static String cleanURL(String url){
-		// Ignore http/https difference, avoid www. problems.
 		if(url.contains("http"))
 			url = url.substring(url.indexOf("//") + 2);
 		if(url.contains("www."))
@@ -157,14 +146,14 @@ public class Frontier {
 	// Add URL to visited list for analysis purposes.
 	public static void setLinkAsVisited(String url){
 		visitedLinks.add(url);
-		processedVsFrontier.put(visitedLinks.size(), uniqueCount + visitedLinks.size());
+		visitedVsFrontier.put(visitedLinks.size(), uniqueCount + visitedLinks.size());
 	}
 	
 	// Print relevant results at the end.
 	private static void printStrings(){
-		for(int i = 1; i <= processedVsFrontier.size(); i++){
+		for(int i = 1; i <= visitedVsFrontier.size(); i++){
 			// [Document Processed #] [Number of links seen at that point in time]
-			System.out.println(i + " " + processedVsFrontier.get(i));
+			System.out.println(i + " " + visitedVsFrontier.get(i));
 		}
 	}
 	

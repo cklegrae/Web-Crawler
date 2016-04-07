@@ -17,8 +17,8 @@ public class Crawler implements Runnable{
 		documents = new HashMap<String, String>();
 	}
 	
+	// While there are websites with pages in the frontier, we crawl the oldest encountered website's oldest webpage.
 	public void run() {
-		// While there are websites with pages in the frontier, we crawl the oldest encountered website's oldest webpage.
 		while(!Frontier.done()){
 			Website website = Frontier.nextSite();
 			if(website == null)
@@ -29,11 +29,9 @@ public class Crawler implements Runnable{
 				if(doc != null){
 					storeDocument(url, doc.toString());
 					for(String u: parse(doc)){
-						// Every parsed URL must be valid, so we add it to the frontier.
 						Frontier.addURL(u);
 					}
 				}
-				// Add the link to our visited list and release the website from the frontier.
 				Frontier.setLinkAsVisited(url);
 				Frontier.releaseSite(website);
 			}
@@ -46,7 +44,8 @@ public class Crawler implements Runnable{
 		Elements e = doc.select("a[href]");
 		for(Element element : e){
 			String url = element.attr("href").replace("..", "");
-			// If we find a relative URL, make it absolute.
+			
+			// If there's a relative URL, make it absolute.
 			if(!url.trim().startsWith("http") && !url.trim().startsWith("www.")){
 				try {
 					if(url.trim().startsWith("/"))
@@ -57,7 +56,6 @@ public class Crawler implements Runnable{
 					
 					url = "http://" + new URI(baseURI).getHost() + "/" + url.trim();
 					
-					// Check its validity, and add it to the list if so.
 					if(isValidURL(url)){
 						list.add(url);
 					}
@@ -88,10 +86,9 @@ public class Crawler implements Runnable{
 		return doc;
 	}
 	
-	// Check validity of URL.
+	// Check validity of URL. Must be .pdf or .html.
 	public boolean isValidURL(String url){
 		try {
-			// If we can connect using the URL, we only consider it valid if it's an html or pdf page.
 			String contentType = new URL(url).openConnection().getContentType();
 			if(contentType == null)
 				return false;
